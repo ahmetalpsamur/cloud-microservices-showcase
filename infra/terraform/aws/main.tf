@@ -7,6 +7,12 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  # Remote state so `terraform apply` is safe to run from CI or by more than
+  # one person. Left partially configured on purpose - values are passed at
+  # init time (see README) rather than hardcoded, since the bucket/table are
+  # account-specific and provisioned once via infra/terraform/bootstrap.
+  backend "s3" {}
 }
 
 provider "aws" {

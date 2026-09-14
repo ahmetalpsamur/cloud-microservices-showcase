@@ -1,5 +1,7 @@
 # Cloud Microservices Showcase — E-Ticaret Sipariş Akışı
 
+[![CI](https://github.com/ahmetalpsamur/cloud-microservices-showcase/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmetalpsamur/cloud-microservices-showcase/actions/workflows/ci.yml)
+
 Tek bir iş akışına odaklanan, uçtan uca çalışan bir e-ticaret backend'i: ürün kataloğu ve arama **Go + Elasticsearch** ile, sipariş verme **Spring Boot** ile yapılır; iki servis **RabbitMQ** üzerinden haberleşir. Tamamı **Kubernetes**'te çalışacak şekilde paketlenmiş, **AWS (EKS)** üzerinde Terraform ile provision edilebilir.
 
 ## İş akışı
@@ -52,7 +54,16 @@ Admin ────────────────────────�
 - `GET /orders/{id}` — sipariş durumunu döner.
 - `GET /actuator/health` — health check.
 
-> Not: Siparişler bu demo'da bellek içi (in-memory) tutulur; gerçek bir kurulumda bir veritabanının (ör. PostgreSQL) arkasına alınması beklenir.
+Siparişler **PostgreSQL**'de tutulur (Spring Data JPA + Flyway ile şema yönetimi, `order-service/src/main/resources/db/migration`).
+
+## Test
+
+```bash
+cd catalog-service && go test ./...
+cd order-service && mvn test
+```
+
+CI her push'ta bu testleri, Kubernetes manifest lint'ini ve (main'e push'ta) Docker image build+publish adımını çalıştırır.
 
 ## Lokal geliştirme
 
@@ -80,21 +91,39 @@ curl 'localhost:8080/products/search?q=kulaklık'
 
 ## Kubernetes'e deploy
 
+Servis imajları CI tarafından her main push'unda `ghcr.io/ahmetalpsamur/{catalog-service,order-service}:latest` olarak build edilip yayınlanır (bkz. `.github/workflows/ci.yml`).
+
 ```bash
 kubectl apply -f k8s/namespace.yaml
 kubectl apply -f k8s/
 ```
 
+> Not: `k8s/postgres.yaml` demo amaçlı `emptyDir` volume kullanır (pod yeniden başlarsa veri kaybolur). Gerçek bir kurulumda bunun yerine bir `PersistentVolumeClaim` veya yönetilen bir veritabanı (RDS vb.) kullanılmalı.
+
 ## AWS altyapısı (Terraform)
 
-`infra/terraform/aws` altında bir VPC ve EKS cluster tanımı bulunur:
+`infra/terraform/aws` altında bir VPC ve EKS cluster tanımı bulunur. State S3'te, kilitleme DynamoDB'de tutulur; bucket/tablo `infra/terraform/bootstrap` ile bir kere oluşturulur:
 
 ```bash
-cd infra/terraform/aws
+# 1) State backend'i bir kere provision et (kendi local state'iyle çalışır)
+cd infra/terraform/bootstrap
 terraform init
+terraform apply -var="state_bucket_name=<globally-unique-bucket-name>"
+
+# 2) Asıl altyapıyı, oluşan bucket/tabloyu backend olarak kullanarak init et
+cd ../aws
+terraform init \
+  -backend-config="bucket=<globally-unique-bucket-name>" \
+  -backend-config="key=cloud-microservices-showcase/terraform.tfstate" \
+  -backend-config="region=eu-central-1" \
+  -backend-config="dynamodb_table=cloud-microservices-showcase-tflock"
 terraform plan
 ```
 
 ## CI
 
-`.github/workflows/ci.yml` her push'ta `catalog-service`'i derler/vet eder, `order-service`'i Maven ile build eder ve Kubernetes manifestlerini `kubeconform` ile doğrular.
+`.github/workflows/ci.yml`:
+- `catalog-service`'i derler, vet eder ve test eder (Go)
+- `order-service`'i Maven ile build edip test eder (Spring Boot)
+- Kubernetes manifestlerini `kubeconform` ile doğrular
+- main'e her push'ta her iki servisin Docker imajını build edip GHCR'a yayınlar (`:latest` ve commit SHA'sı ile)
