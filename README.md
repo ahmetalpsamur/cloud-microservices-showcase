@@ -1,19 +1,30 @@
-# Cloud Microservices Showcase
+# Cloud Microservices Showcase — E-Ticaret Sipariş Akışı
 
-Küçük ama uçtan uca çalışan bir mikroservis mimarisi: **Go** tabanlı bir ingestion servisi, olayları **RabbitMQ** üzerinden **Spring Boot** tabanlı bir consumer servisine iletir, bu servis olayları **Elasticsearch**'e indeksler ve arama uç noktası sunar. Tamamı **Kubernetes** üzerinde çalışacak şekilde paketlenmiş, **AWS (EKS)** üzerinde Terraform ile provision edilebilir.
+Tek bir iş akışına odaklanan, uçtan uca çalışan bir e-ticaret backend'i: ürün kataloğu ve arama **Go + Elasticsearch** ile, sipariş verme **Spring Boot** ile yapılır; iki servis **RabbitMQ** üzerinden haberleşir. Tamamı **Kubernetes**'te çalışacak şekilde paketlenmiş, **AWS (EKS)** üzerinde Terraform ile provision edilebilir.
 
-## Mimari
+## İş akışı
+
+1. Ürünler `catalog-service`'e eklenir ve Elasticsearch'e indekslenir.
+2. Müşteri `catalog-service` üzerinden ürün arar (`GET /products/search?q=`).
+3. Müşteri `order-service`'e sipariş verir (`POST /orders`). Sipariş kalemleri `catalog-service`'ten fiyat/stok bilgisiyle doğrulanır; stok yetersizse sipariş reddedilir.
+4. `order-service` siparişi kaydeder ve `order.created` olayını RabbitMQ'nun `orders.exchange`'ine yayınlar.
+5. `catalog-service`, `order.created` olayını dinler ve ilgili ürünlerin stoğunu Elasticsearch'te günceller — böylece bir sonraki arama güncel stoğu yansıtır.
 
 ```
-        POST /events                 events.exchange           events.queue
-Client ───────────────▶ [go-service] ───────────────▶ RabbitMQ ───────────────▶ [spring-boot-service]
-                          (Go, :8080)                                              (Java, :8081)
-                                                                                        │
-                                                                                        ▼
-                                                                                  Elasticsearch
-                                                                                        ▲
-                                                                                        │
-Client ◀────────────────────────────── GET /search?q=... ─────────────────────────────┘
+                 POST /products                    GET /products/search
+Admin ─────────────────────────▶ [catalog-service] ◀───────────────────── Müşteri
+                                    (Go, :8080)
+                                    Elasticsearch
+                                        ▲   │
+                          order.created │   │ GET /products/{id}
+                       (stok senkronu)  │   │ (fiyat/stok doğrulama)
+                                        │   ▼
+                                    RabbitMQ ◀── order.created yayınla ── [order-service]
+                                                                            (Java, :8081)
+                                                                                 ▲
+                                                                          POST /orders
+                                                                                 │
+                                                                             Müşteri
 ```
 
 ## Kullanılan teknolojiler
@@ -22,21 +33,26 @@ Client ◀───────────────────────�
 |---|---|
 | Bulut | AWS (EKS) — `infra/terraform/aws` |
 | Altyapı & orkestrasyon | Kubernetes — `k8s/` |
-| Mesajlaşma | RabbitMQ — `go-service` publisher, `spring-boot-service` consumer |
-| Arama/veri | Elasticsearch — `spring-boot-service` |
-| Framework | Spring Boot — `spring-boot-service` |
-| Dil | Go — `go-service` |
+| Mesajlaşma | RabbitMQ — sipariş → stok senkronu |
+| Arama/veri | Elasticsearch — ürün kataloğu ve arama |
+| Framework | Spring Boot — `order-service` |
+| Dil | Go — `catalog-service` |
 
 ## Servisler
 
-### `go-service`
-- `POST /events` — gelen JSON olayını doğrular ve RabbitMQ'daki `events.exchange` exchange'ine publish eder.
+### `catalog-service` (Go, :8080)
+- `POST /products` — ürün oluşturur, Elasticsearch `products` index'ine yazar.
+- `GET /products/{id}` — tek ürünü getirir.
+- `GET /products/search?q=` — ürün adı/açıklamasında tam metin arama yapar.
 - `GET /healthz` — health check.
+- Arka planda: `order.created` olaylarını RabbitMQ'dan dinleyip ilgili ürünlerin stoğunu düşürür.
 
-### `spring-boot-service`
-- RabbitMQ `events.queue` kuyruğunu dinler, gelen olayları Elasticsearch `events` index'ine yazar.
-- `GET /search?q=...` — Elasticsearch üzerinde arama yapar.
+### `order-service` (Spring Boot, :8081)
+- `POST /orders` — sipariş kalemlerini `catalog-service`'ten doğrular (fiyat + stok), toplamı hesaplar, siparişi kaydeder ve `order.created` olayını yayınlar.
+- `GET /orders/{id}` — sipariş durumunu döner.
 - `GET /actuator/health` — health check.
+
+> Not: Siparişler bu demo'da bellek içi (in-memory) tutulur; gerçek bir kurulumda bir veritabanının (ör. PostgreSQL) arkasına alınması beklenir.
 
 ## Lokal geliştirme
 
@@ -44,14 +60,22 @@ Client ◀───────────────────────�
 docker compose up --build
 ```
 
-Bu komut RabbitMQ, Elasticsearch, `go-service` ve `spring-boot-service`'i ayağa kaldırır.
-
 ```bash
-# Olay gönder
-curl -X POST localhost:8080/events -d '{"type":"order.created","payload":{"orderId":"123"}}' -H 'Content-Type: application/json'
+# Ürün ekle
+curl -X POST localhost:8080/products \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Kablosuz Kulaklık","description":"Gürültü engellemeli bluetooth kulaklık","price":149.90,"stock":25}'
 
 # Ara
-curl 'localhost:8081/search?q=order'
+curl 'localhost:8080/products/search?q=kulaklık'
+
+# Sipariş ver (dönen ürün id'sini kullan)
+curl -X POST localhost:8081/orders \
+  -H 'Content-Type: application/json' \
+  -d '{"customerId":"cust-1","items":[{"productId":"<product-id>","quantity":2}]}'
+
+# Sipariş sonrası stoğun düştüğünü doğrula
+curl 'localhost:8080/products/search?q=kulaklık'
 ```
 
 ## Kubernetes'e deploy
@@ -73,4 +97,4 @@ terraform plan
 
 ## CI
 
-`.github/workflows/ci.yml` her push'ta Go servisini derler/test eder ve Spring Boot servisini Maven ile build eder.
+`.github/workflows/ci.yml` her push'ta `catalog-service`'i derler/vet eder, `order-service`'i Maven ile build eder ve Kubernetes manifestlerini `kubeconform` ile doğrular.

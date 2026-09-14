@@ -10,17 +10,17 @@ spec:
   rules:
     - http:
         paths:
-          - path: /events(/|$)(.*)
+          - path: /products(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
-                name: go-service
+                name: catalog-service
                 port:
                   number: 8080
-          - path: /search(/|$)(.*)
+          - path: /orders(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
-                name: spring-boot-service
+                name: order-service
                 port:
                   number: 8081

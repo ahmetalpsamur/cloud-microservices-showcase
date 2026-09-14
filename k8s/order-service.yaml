@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: spring-boot-service
+  name: order-service
   namespace: showcase
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: spring-boot-service
+      app: order-service
   template:
     metadata:
       labels:
-        app: spring-boot-service
+        app: order-service
     spec:
       containers:
-        - name: spring-boot-service
-          image: ghcr.io/example/spring-boot-service:latest
+        - name: order-service
+          image: ghcr.io/example/order-service:latest
           ports:
             - containerPort: 8081
           env:
             - name: RABBITMQ_HOST
               value: "rabbitmq"
-            - name: ELASTICSEARCH_URIS
-              value: "http://elasticsearch:9200"
+            - name: CATALOG_SERVICE_URL
+              value: "http://catalog-service:8080"
           readinessProbe:
             httpGet:
               path: /actuator/health
@@ -39,11 +39,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: spring-boot-service
+  name: order-service
   namespace: showcase
 spec:
   selector:
-    app: spring-boot-service
+    app: order-service
   ports:
     - port: 8081
       targetPort: 8081
