@@ -36,7 +36,7 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: maven
-      - run: mvn -B -q package -DskipTests
+      - run: mvn -B -q package
 
   k8s-lint:
     name: Kubernetes manifest lint
