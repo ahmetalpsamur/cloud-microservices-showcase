@@ -39,7 +39,6 @@ class OrderServiceTest {
     @BeforeEach
     void setUp() {
         orderService = new OrderService(catalogClient, orderRepository, eventPublisher);
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     private ProductDto product(String id, String name, double price, int stock) {
@@ -65,6 +64,7 @@ class OrderServiceTest {
     @Test
     void placeOrder_computesTotalAndPublishesEvent() {
         when(catalogClient.findProduct("p1")).thenReturn(Optional.of(product("p1", "Kulaklık", 100.0, 10)));
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Order order = orderService.placeOrder(request("cust-1", "p1", 3));
 
