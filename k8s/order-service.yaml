@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: order-service
-          image: ghcr.io/example/order-service:latest
+          image: ghcr.io/ahmetalpsamur/order-service:latest
           ports:
             - containerPort: 8081
           env:
