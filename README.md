@@ -1,6 +1,6 @@
-# Cloud Microservices Showcase — E-Ticaret Sipariş Akışı
+# Order Catalog Microservices — E-Ticaret Sipariş Akışı
 
-[![CI](https://github.com/ahmetalpsamur/cloud-microservices-showcase/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmetalpsamur/cloud-microservices-showcase/actions/workflows/ci.yml)
+[![CI](https://github.com/ahmetalpsamur/order-catalog-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/ahmetalpsamur/order-catalog-microservices/actions/workflows/ci.yml)
 
 Tek bir iş akışına odaklanan, uçtan uca çalışan bir e-ticaret backend'i: ürün kataloğu ve arama **Go + Elasticsearch** ile, sipariş verme **Spring Boot** ile yapılır; iki servis **RabbitMQ** üzerinden haberleşir. Tamamı **Kubernetes**'te çalışacak şekilde paketlenmiş, **AWS (EKS)** üzerinde Terraform ile provision edilebilir.
 
@@ -114,9 +114,9 @@ terraform apply -var="state_bucket_name=<globally-unique-bucket-name>"
 cd ../aws
 terraform init \
   -backend-config="bucket=<globally-unique-bucket-name>" \
-  -backend-config="key=cloud-microservices-showcase/terraform.tfstate" \
+  -backend-config="key=order-catalog-microservices/terraform.tfstate" \
   -backend-config="region=eu-central-1" \
-  -backend-config="dynamodb_table=cloud-microservices-showcase-tflock"
+  -backend-config="dynamodb_table=order-catalog-microservices-tflock"
 terraform plan
 ```
 

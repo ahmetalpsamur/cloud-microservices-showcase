@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/example/cloud-microservices-showcase/catalog-service/internal/catalog"
+	"github.com/example/order-catalog-microservices/catalog-service/internal/catalog"
 	"github.com/google/uuid"
 )
 

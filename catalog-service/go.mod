@@ -1,4 +1,4 @@
-module github.com/example/cloud-microservices-showcase/catalog-service
+module github.com/example/order-catalog-microservices/catalog-service
 
 go 1.22
 

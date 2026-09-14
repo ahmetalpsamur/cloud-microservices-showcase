@@ -12,5 +12,5 @@ variable "state_bucket_name" {
 variable "lock_table_name" {
   description = "DynamoDB table name for Terraform state locking"
   type        = string
-  default     = "cloud-microservices-showcase-tflock"
+  default     = "order-catalog-microservices-tflock"
 }

@@ -8,9 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/example/cloud-microservices-showcase/catalog-service/internal/catalog"
-	"github.com/example/cloud-microservices-showcase/catalog-service/internal/handler"
-	"github.com/example/cloud-microservices-showcase/catalog-service/internal/rabbitmq"
+	"github.com/example/order-catalog-microservices/catalog-service/internal/catalog"
+	"github.com/example/order-catalog-microservices/catalog-service/internal/handler"
+	"github.com/example/order-catalog-microservices/catalog-service/internal/rabbitmq"
 )
 
 func main() {

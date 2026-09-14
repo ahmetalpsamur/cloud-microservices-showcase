@@ -7,7 +7,7 @@ variable "region" {
 variable "cluster_name" {
   description = "EKS cluster name"
   type        = string
-  default     = "cloud-microservices-showcase"
+  default     = "order-catalog-microservices"
 }
 
 variable "cluster_version" {
