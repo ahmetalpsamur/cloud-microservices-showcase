@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-boot-service
+  namespace: showcase
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: spring-boot-service
+  template:
+    metadata:
+      labels:
+        app: spring-boot-service
+    spec:
+      containers:
+        - name: spring-boot-service
+          image: ghcr.io/example/spring-boot-service:latest
+          ports:
+            - containerPort: 8081
+          env:
+            - name: RABBITMQ_HOST
+              value: "rabbitmq"
+            - name: ELASTICSEARCH_URIS
+              value: "http://elasticsearch:9200"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 20
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-boot-service
+  namespace: showcase
+spec:
+  selector:
+    app: spring-boot-service
+  ports:
+    - port: 8081
+      targetPort: 8081

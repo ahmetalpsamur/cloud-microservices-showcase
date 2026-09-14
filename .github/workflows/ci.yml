@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  go-service:
+    name: Go service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: go build ./...
+      - run: go vet ./...
+
+  spring-boot-service:
+    name: Spring Boot service
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: spring-boot-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - run: mvn -B -q package -DskipTests
+
+  k8s-lint:
+    name: Kubernetes manifest lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+      - name: Validate manifests
+        run: kubeconform -summary -ignore-missing-schemas k8s/
