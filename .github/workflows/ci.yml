@@ -21,6 +21,7 @@ jobs:
       - run: go mod tidy
       - run: go build ./...
       - run: go vet ./...
+      - run: go test ./... -v
 
   order-service:
     name: Order service (Spring Boot)

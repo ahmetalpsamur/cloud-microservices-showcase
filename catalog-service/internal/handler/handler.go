@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -10,11 +11,20 @@ import (
 	"github.com/google/uuid"
 )
 
-type Handler struct {
-	store *catalog.Store
+// ProductStore is the subset of catalog.Store the HTTP layer depends on.
+// Kept as an interface so handlers can be unit tested without a real
+// Elasticsearch backend.
+type ProductStore interface {
+	Create(ctx context.Context, p catalog.Product) error
+	Get(ctx context.Context, id string) (*catalog.Product, error)
+	Search(ctx context.Context, query string) ([]catalog.Product, error)
 }
 
-func New(store *catalog.Store) *Handler {
+type Handler struct {
+	store ProductStore
+}
+
+func New(store ProductStore) *Handler {
 	return &Handler{store: store}
 }
 
