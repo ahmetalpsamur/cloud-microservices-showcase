@@ -3,9 +3,9 @@ WORKDIR /src
 COPY go.mod go.sum* ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o /out/go-service .
+RUN CGO_ENABLED=0 go build -o /out/catalog-service .
 
 FROM gcr.io/distroless/static-debian12
-COPY --from=build /out/go-service /go-service
+COPY --from=build /out/catalog-service /catalog-service
 EXPOSE 8080
-ENTRYPOINT ["/go-service"]
+ENTRYPOINT ["/catalog-service"]
